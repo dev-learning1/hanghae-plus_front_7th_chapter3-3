@@ -1,23 +1,11 @@
 import { apiClient } from "@/shared/api/client"
-import type { Post, PostsResponse, CreatePostDto, UpdatePostDto, User } from "@/shared/types"
+import type { Post, PostsResponse, CreatePostDto, UpdatePostDto } from "@/shared/types"
 
 const API_BASE = "/api"
 
 export const postApi = {
   async getPosts(params: { limit: number; skip: number }): Promise<PostsResponse> {
-    const postsData = await apiClient.get<PostsResponse>(`${API_BASE}/posts?limit=${params.limit}&skip=${params.skip}`)
-
-    const usersData = await apiClient.get<{ users: User[] }>(`${API_BASE}/users?limit=0&select=username,image`)
-
-    const postsWithUsers = postsData.posts.map((post) => ({
-      ...post,
-      author: usersData.users.find((user) => user.id === post.userId),
-    }))
-
-    return {
-      ...postsData,
-      posts: postsWithUsers,
-    }
+    return apiClient.get<PostsResponse>(`${API_BASE}/posts?limit=${params.limit}&skip=${params.skip}`)
   },
 
   async searchPosts(query: string): Promise<PostsResponse> {
@@ -25,19 +13,7 @@ export const postApi = {
   },
 
   async getPostsByTag(tag: string): Promise<PostsResponse> {
-    const postsData = await apiClient.get<PostsResponse>(`${API_BASE}/posts/tag/${tag}`)
-
-    const usersData = await apiClient.get<{ users: User[] }>(`${API_BASE}/users?limit=0&select=username,image`)
-
-    const postsWithUsers = postsData.posts.map((post) => ({
-      ...post,
-      author: usersData.users.find((user) => user.id === post.userId),
-    }))
-
-    return {
-      ...postsData,
-      posts: postsWithUsers,
-    }
+    return apiClient.get<PostsResponse>(`${API_BASE}/posts/tag/${tag}`)
   },
 
   async createPost(data: CreatePostDto): Promise<Post> {
@@ -50,5 +26,13 @@ export const postApi = {
 
   async deletePost(id: number): Promise<void> {
     return apiClient.delete(`${API_BASE}/posts/${id}`)
+  },
+
+  async likePost(id: number, likes: number): Promise<Post> {
+    return apiClient.patch<Post>(`${API_BASE}/posts/${id}`, { reactions: { likes: likes + 1 } })
+  },
+
+  async dislikePost(id: number, dislikes: number): Promise<Post> {
+    return apiClient.patch<Post>(`${API_BASE}/posts/${id}`, { reactions: { dislikes: dislikes + 1 } })
   },
 }
