@@ -9,6 +9,7 @@ import { PostDetail } from "@/widgets/post-detail/ui/PostDetail"
 import { UserModal } from "@/widgets/user-modal/ui/UserModal"
 import { useQueryPosts, useQueryPostsSearch, useQueryPostsByTag } from "@/entities/post/model/usePost"
 import { useQueryTags } from "@/entities/tag/model/useTag"
+import { useQueryUsers } from "@/entities/user/model/useUser"
 import { searchQueryAtom, selectedTagAtom, sortByAtom, sortOrderAtom, paginationAtom } from "@/features/post-search/model/store"
 import type { Post } from "@/shared/types"
 
@@ -30,6 +31,7 @@ const PostsManagerPage = () => {
 
   // Queries
   const { data: tagsData } = useQueryTags()
+  const { data: usersData } = useQueryUsers()
   const { data: postsData, isLoading: isPostsLoading } = useQueryPosts({
     ...pagination,
     enabled: !selectedTag && !isSearchMode,
@@ -50,7 +52,7 @@ const PostsManagerPage = () => {
     setSelectedTag(params.get("tag") || "")
   }, [location.search])
 
-  const updateURL = () => {
+  useEffect(() => {
     const params = new URLSearchParams()
     if (pagination.skip) params.set("skip", pagination.skip.toString())
     if (pagination.limit) params.set("limit", pagination.limit.toString())
@@ -58,12 +60,16 @@ const PostsManagerPage = () => {
     if (sortBy) params.set("sortBy", sortBy)
     if (sortOrder) params.set("sortOrder", sortOrder)
     if (selectedTag) params.set("tag", selectedTag)
-    navigate(`?${params.toString()}`)
-  }
-
-  useEffect(() => {
-    updateURL()
-  }, [pagination, sortBy, sortOrder, selectedTag])
+    
+    const newSearch = params.toString()
+    const currentSearch = location.search.slice(1) // Remove '?'
+    
+    // URL이 실제로 변경된 경우에만 navigate
+    if (newSearch !== currentSearch) {
+      navigate(`?${newSearch}`, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination, sortBy, sortOrder, selectedTag, searchQuery])
 
   const handleSearch = () => {
     if (searchQuery) {
@@ -95,13 +101,23 @@ const PostsManagerPage = () => {
 
   // Get current posts based on mode
   const getCurrentPosts = () => {
+    let posts: Post[] = []
     if (isSearchMode && searchData) {
-      return searchData.posts
+      posts = searchData.posts
+    } else if (selectedTag && tagData) {
+      posts = tagData.posts
+    } else {
+      posts = postsData?.posts || []
     }
-    if (selectedTag && tagData) {
-      return tagData.posts
+
+    // 사용자 데이터와 병합
+    if (usersData?.users) {
+      return posts.map((post) => ({
+        ...post,
+        author: usersData.users.find((user) => user.id === post.userId),
+      }))
     }
-    return postsData?.posts || []
+    return posts
   }
 
   const getCurrentTotal = () => {
