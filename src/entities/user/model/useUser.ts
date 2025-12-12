@@ -10,3 +10,11 @@ export const useQueryUser = (id: number | null) => {
     enabled: !!id,
   })
 }
+
+export const useQueryUsers = () => {
+  return useQuery({
+    queryKey: [USER_QUERY_KEY, "all"],
+    queryFn: () => userApi.getUsers(),
+    staleTime: 5 * 60 * 1000, // 5분간 캐시 유지
+  })
+}
